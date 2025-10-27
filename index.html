@@ -35,7 +35,6 @@
             text-align: center;
             color: #000000;
             font-weight: 600;
-            display: none;
         }
 
         .form-group {
@@ -77,6 +76,12 @@
             border-color: #000000;
         }
 
+        input:disabled,
+        select:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+        }
+
         .name-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -106,12 +111,17 @@
             margin-top: 32px;
         }
 
-        .submit-btn:hover {
+        .submit-btn:hover:not(:disabled) {
             background-color: #333333;
         }
 
-        .submit-btn:active {
+        .submit-btn:active:not(:disabled) {
             background-color: #1a1a1a;
+        }
+
+        .submit-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
         }
 
         .help-link {
@@ -125,6 +135,39 @@
         .help-link:hover {
             color: #000000;
             text-decoration: underline;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #059669;
+        }
+
+        .message.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #dc2626;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
         }
 
         @media (max-width: 640px) {
@@ -152,11 +195,15 @@
 <body>
     <div class="container">
         <h1>会員登録</h1>
+        
+        <div id="message" class="message"></div>
+        <div id="loading" class="loading">読み込み中...</div>
+        
         <form id="registrationForm">
             <div class="form-group">
                 <label for="plan">登録プラン<span class="required">*</span></label>
                 <select id="plan" name="plan" required>
-                    <option value="free" selected>無料プラン</option>
+                    <option value="">プランを選択してください</option>
                 </select>
             </div>
 
@@ -188,15 +235,166 @@
                 <input type="email" id="email" name="email" placeholder="example@email.com" required>
             </div>
 
-            <button type="submit" class="submit-btn">登録</button>
+            <button type="submit" class="submit-btn" id="submitBtn">登録</button>
         </form>
     </div>
 
     <script>
-        document.getElementById('registrationForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('登録ボタンが押されました（フロントエンドのみのため実際の登録処理は実装されていません）');
+        // ========================================
+        // 設定
+        // ========================================
+        
+        // バックエンドAPIのベースURL（デプロイ後に変更してください）
+        const API_BASE_URL = 'https://gpts-form-service-fbqowedyyq-an.a.run.app';
+
+        // ========================================
+        // 初期化
+        // ========================================
+        
+        let isSubmitting = false;
+
+        // ページ読み込み時にプランを取得
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPlans();
         });
+
+        // ========================================
+        // プラン読み込み
+        // ========================================
+        
+        async function loadPlans() {
+            const planSelect = document.getElementById('plan');
+            const loading = document.getElementById('loading');
+            
+            loading.classList.add('show');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/plans`);
+                
+                if (!response.ok) {
+                    throw new Error('プランの読み込みに失敗しました');
+                }
+                
+                const plans = await response.json();
+                
+                // プランの選択肢を追加
+                plans.forEach(plan => {
+                    const option = document.createElement('option');
+                    option.value = plan.name;
+                    option.textContent = plan.name;
+                    planSelect.appendChild(option);
+                });
+                
+                loading.classList.remove('show');
+                
+            } catch (error) {
+                console.error('プラン読み込みエラー:', error);
+                showMessage('プランの読み込みに失敗しました。ページを再読み込みしてください。', 'error');
+                loading.classList.remove('show');
+            }
+        }
+
+        // ========================================
+        // フォーム送信
+        // ========================================
+        
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 二重送信防止
+            if (isSubmitting) {
+                return;
+            }
+            
+            isSubmitting = true;
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '送信中...';
+            submitBtn.disabled = true;
+            
+            // 入力欄を無効化
+            disableForm();
+            
+            // メッセージをクリア
+            hideMessage();
+            
+            try {
+                const formData = {
+                    memberId: document.getElementById('memberId').value.trim(),
+                    lastName: document.getElementById('lastName').value.trim(),
+                    firstName: document.getElementById('firstName').value.trim(),
+                    birthDate: document.getElementById('birthdate').value,
+                    email: document.getElementById('email').value.trim(),
+                    plan: document.getElementById('plan').value
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/api/applications`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // 成功
+                    showMessage(result.message || '申請を受け付けました。承認までしばらくお待ちください。', 'success');
+                    
+                    // フォームをリセット
+                    document.getElementById('registrationForm').reset();
+                    
+                } else if (response.status === 409) {
+                    // 重複エラー
+                    showMessage(result.error || 'この会員番号またはメールアドレスで既に申請済みです', 'error');
+                    enableForm();
+                    
+                } else {
+                    // その他のエラー
+                    showMessage(result.error || '申請の処理中にエラーが発生しました', 'error');
+                    enableForm();
+                }
+                
+            } catch (error) {
+                console.error('送信エラー:', error);
+                showMessage('ネットワークエラーが発生しました。インターネット接続を確認してください。', 'error');
+                enableForm();
+                
+            } finally {
+                isSubmitting = false;
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // ========================================
+        // ユーティリティ関数
+        // ========================================
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} show`;
+            
+            // 画面上部にスクロール
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function hideMessage() {
+            const messageDiv = document.getElementById('message');
+            messageDiv.classList.remove('show');
+        }
+
+        function disableForm() {
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => input.disabled = true);
+        }
+
+        function enableForm() {
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => input.disabled = false);
+        }
     </script>
 </body>
 </html>

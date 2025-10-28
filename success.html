@@ -1,1 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>申請完了 - 会員登録フォーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 60px 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .checkmark {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #d1fae5;
+            margin: 0 auto 32px;
+            position: relative;
+            animation: scaleIn 0.4s ease-out;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+
+        .checkmark::after {
+            content: '';
+            position: absolute;
+            left: 28px;
+            top: 20px;
+            width: 20px;
+            height: 35px;
+            border: solid #059669;
+            border-width: 0 4px 4px 0;
+            transform: rotate(45deg);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            color: #000000;
+            font-weight: 600;
+        }
+
+        .message-box {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #059669;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 32px 0;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .info-text {
+            font-size: 15px;
+            color: #666666;
+            line-height: 1.8;
+            margin-bottom: 32px;
+        }
+
+        .back-btn {
+            padding: 14px 40px;
+            background-color: #000000;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background-color: #333333;
+        }
+
+        .back-btn:active {
+            background-color: #1a1a1a;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 40px 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .checkmark {
+                width: 70px;
+                height: 70px;
+            }
+
+            .checkmark::after {
+                left: 24px;
+                top: 18px;
+                width: 18px;
+                height: 30px;
+            }
+
+            .message-box {
+                font-size: 14px;
+                padding: 16px;
+            }
+
+            .info-text {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="checkmark"></div>
+        <h1>申請が完了しました</h1>
+        
+        <div class="message-box" id="messageBox">
+            申請を受け付けました。承認までしばらくお待ちください。
+        </div>
+
+        <p class="info-text">
+            ご登録ありがとうございます。<br>
+            承認が完了次第、メールが配信されます。
+        </p>
+
+        <a href="index.html" class="back-btn">トップページに戻る</a>
+    </div>
+
+    <script>
+        // ========================================
+        // 成功メッセージの表示
+        // ========================================
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            // 成功メッセージを取得
+            const successMessage = sessionStorage.getItem('successMessage');
+            
+            if (successMessage) {
+                document.getElementById('messageBox').textContent = successMessage;
+                sessionStorage.removeItem('successMessage');
+            }
+            
+            // セッションストレージをクリーンアップ
+            sessionStorage.removeItem('registrationFormData');
+        });
+    </script>
+</body>
+</html>

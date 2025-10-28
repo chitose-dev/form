@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>読み込み中 - 会員登録フォーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 60px 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #000000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 32px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #000000;
+            font-weight: 600;
+        }
+
+        p {
+            font-size: 16px;
+            color: #666666;
+            line-height: 1.6;
+        }
+
+        .error-message {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #dc2626;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 24px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .retry-btn {
+            margin-top: 24px;
+            padding: 12px 32px;
+            background-color: #000000;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: none;
+        }
+
+        .retry-btn.show {
+            display: inline-block;
+        }
+
+        .retry-btn:hover {
+            background-color: #333333;
+        }
+
+        .retry-btn:active {
+            background-color: #1a1a1a;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 40px 24px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            p {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner" id="spinner"></div>
+        <h1 id="title">申請を送信中</h1>
+        <p id="message">しばらくお待ちください...</p>
+        <div id="errorMessage" class="error-message"></div>
+        <button id="retryBtn" class="retry-btn" onclick="retry()">再試行</button>
+    </div>
+
+    <script>
+        // ========================================
+        // 設定
+        // ========================================
+        
+        const API_BASE_URL = 'https://gpts-form-service-fbqowedyyq-an.a.run.app';
+
+        // ========================================
+        // データ取得と送信処理
+        // ========================================
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            // フォームデータを取得
+            const formData = JSON.parse(sessionStorage.getItem('registrationFormData'));
+            
+            if (!formData) {
+                // データがない場合は入力ページに戻る
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // 送信処理を実行
+            submitApplication(formData);
+        });
+
+        async function submitApplication(formData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/applications`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // 成功 - セッションストレージをクリアして完了ページへ
+                    sessionStorage.removeItem('registrationFormData');
+                    sessionStorage.setItem('successMessage', result.message || '申請を受け付けました。承認までしばらくお待ちください。');
+                    window.location.href = 'success.html';
+                    
+                } else if (response.status === 409) {
+                    // 重複エラー
+                    showError(result.error || 'この会員番号またはメールアドレスで既に申請済みです');
+                    
+                } else {
+                    // その他のエラー
+                    showError(result.error || '申請の処理中にエラーが発生しました');
+                }
+                
+            } catch (error) {
+                console.error('送信エラー:', error);
+                showError('ネットワークエラーが発生しました。インターネット接続を確認してください。');
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('title').textContent = '申請に失敗しました';
+            document.getElementById('message').textContent = '';
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorMessage').classList.add('show');
+            document.getElementById('retryBtn').classList.add('show');
+        }
+
+        function retry() {
+            // 入力ページに戻る（データは保持される）
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

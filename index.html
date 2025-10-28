@@ -144,12 +144,6 @@
             display: none;
         }
 
-        .message.success {
-            background-color: #d1fae5;
-            color: #065f46;
-            border: 1px solid #059669;
-        }
-
         .message.error {
             background-color: #fee2e2;
             color: #991b1b;
@@ -197,7 +191,7 @@
         <h1>会員登録</h1>
         
         <div id="message" class="message"></div>
-        <div id="loading" class="loading">読み込み中...</div>
+        <div id="loading" class="loading">プラン情報を読み込み中...</div>
         
         <form id="registrationForm">
             <div class="form-group">
@@ -256,6 +250,7 @@
         // ページ読み込み時にプランを取得
         document.addEventListener('DOMContentLoaded', function() {
             loadPlans();
+            restoreFormData();
         });
 
         // ========================================
@@ -287,6 +282,13 @@
                 
                 loading.classList.remove('show');
                 
+                // 保存されたプランを復元
+                const savedData = sessionStorage.getItem('registrationFormData');
+                if (savedData) {
+                    const formData = JSON.parse(savedData);
+                    planSelect.value = formData.plan;
+                }
+                
             } catch (error) {
                 console.error('プラン読み込みエラー:', error);
                 showMessage('プランの読み込みに失敗しました。ページを再読み込みしてください。', 'error');
@@ -295,10 +297,26 @@
         }
 
         // ========================================
+        // フォームデータの復元
+        // ========================================
+        
+        function restoreFormData() {
+            const savedData = sessionStorage.getItem('registrationFormData');
+            if (savedData) {
+                const formData = JSON.parse(savedData);
+                document.getElementById('memberId').value = formData.memberId || '';
+                document.getElementById('lastName').value = formData.lastName || '';
+                document.getElementById('firstName').value = formData.firstName || '';
+                document.getElementById('birthdate').value = formData.birthDate || '';
+                document.getElementById('email').value = formData.email || '';
+            }
+        }
+
+        // ========================================
         // フォーム送信
         // ========================================
         
-        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             // 二重送信防止
@@ -307,65 +325,22 @@
             }
             
             isSubmitting = true;
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = '送信中...';
-            submitBtn.disabled = true;
             
-            // 入力欄を無効化
-            disableForm();
+            // フォームデータを収集
+            const formData = {
+                memberId: document.getElementById('memberId').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                firstName: document.getElementById('firstName').value.trim(),
+                birthDate: document.getElementById('birthdate').value,
+                email: document.getElementById('email').value.trim(),
+                plan: document.getElementById('plan').value
+            };
             
-            // メッセージをクリア
-            hideMessage();
+            // セッションストレージに保存
+            sessionStorage.setItem('registrationFormData', JSON.stringify(formData));
             
-            try {
-                const formData = {
-                    memberId: document.getElementById('memberId').value.trim(),
-                    lastName: document.getElementById('lastName').value.trim(),
-                    firstName: document.getElementById('firstName').value.trim(),
-                    birthDate: document.getElementById('birthdate').value,
-                    email: document.getElementById('email').value.trim(),
-                    plan: document.getElementById('plan').value
-                };
-                
-                const response = await fetch(`${API_BASE_URL}/api/applications`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    // 成功
-                    showMessage(result.message || '申請を受け付けました。承認までしばらくお待ちください。', 'success');
-                    
-                    // フォームをリセット
-                    document.getElementById('registrationForm').reset();
-                    
-                } else if (response.status === 409) {
-                    // 重複エラー
-                    showMessage(result.error || 'この会員番号またはメールアドレスで既に申請済みです', 'error');
-                    enableForm();
-                    
-                } else {
-                    // その他のエラー
-                    showMessage(result.error || '申請の処理中にエラーが発生しました', 'error');
-                    enableForm();
-                }
-                
-            } catch (error) {
-                console.error('送信エラー:', error);
-                showMessage('ネットワークエラーが発生しました。インターネット接続を確認してください。', 'error');
-                enableForm();
-                
-            } finally {
-                isSubmitting = false;
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            }
+            // ローディングページに遷移
+            window.location.href = 'loading.html';
         });
 
         // ========================================
@@ -379,21 +354,6 @@
             
             // 画面上部にスクロール
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function hideMessage() {
-            const messageDiv = document.getElementById('message');
-            messageDiv.classList.remove('show');
-        }
-
-        function disableForm() {
-            const inputs = document.querySelectorAll('input, select');
-            inputs.forEach(input => input.disabled = true);
-        }
-
-        function enableForm() {
-            const inputs = document.querySelectorAll('input, select');
-            inputs.forEach(input => input.disabled = false);
         }
     </script>
 </body>
